@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0e0a14">
+<title>Happy Birthday — Surprise from Veera Cloud 🎉</title>
+<style>
+  :root{
+    --bg:#0e0a14;
+    --bg2:#1a1022;
+    --ink:#ffe9f2;
+    --pink:#ff5c8a;
+    --pink-soft:#ffc0cb;
+    --accent:#ffd36e;
+    --muted:#c9a9c4;
+    --font-display:"Segoe UI",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;min-height:100%;width:100%;}
+  html{height:-webkit-fill-available;}
+  body{
+    min-height:100vh;
+    min-height:100dvh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:radial-gradient(1200px 800px at 50% -10%,var(--bg2),var(--bg) 60%);
+    color:var(--ink);
+    font-family:var(--font-display);
+    overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+
+  /* ---- Start overlay (needed so audio can play on user gesture) ---- */
+  #start{
+    position:fixed;inset:0;z-index:50;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:20px;text-align:center;padding:28px;
+    padding-bottom:calc(28px + env(safe-area-inset-bottom));
+    background:radial-gradient(700px 520px at 50% 34%,rgba(255,92,138,.20),transparent 70%),var(--bg);
+    transition:opacity .6s ease;
+  }
+  #start.hide{opacity:0;pointer-events:none;}
+  #cake{font-size:clamp(54px,18vw,90px);line-height:1;animation:bob 2.4s ease-in-out infinite;}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+  #start h1{
+    margin:0;font-size:clamp(30px,8vw,54px);font-weight:800;letter-spacing:.5px;
+    background:linear-gradient(90deg,var(--pink),var(--accent));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  #start p{margin:0;color:var(--muted);max-width:440px;font-size:clamp(15px,4vw,18px);line-height:1.55;}
+  #startBtn{
+    margin-top:6px;border:0;cursor:pointer;-webkit-appearance:none;appearance:none;
+    padding:16px 38px;border-radius:999px;font-size:18px;font-weight:700;color:#2a0a18;
+    background:linear-gradient(90deg,var(--pink),var(--accent));
+    box-shadow:0 10px 30px rgba(255,92,138,.35);
+    transition:transform .15s ease,box-shadow .15s ease;
+    min-height:54px;
+  }
+  #startBtn:active{transform:scale(.97);}
+  #startBtn:focus-visible{outline:3px solid var(--accent);outline-offset:3px;}
+
+  /* ---- Stage ---- */
+  #wrap{
+    position:relative;width:100%;max-width:1100px;margin:0 auto;
+    padding-top:env(safe-area-inset-top);
+  }
+  #canvas{display:block;width:100%;height:auto;touch-action:manipulation;}
+  #canvas.hand{cursor:pointer;}
+
+  /* Hint that pulses over the seed on phones */
+  #tapHint{
+    position:absolute;left:50%;top:26%;transform:translateX(-50%);
+    color:var(--accent);font-size:14px;font-weight:700;letter-spacing:.4px;
+    background:rgba(0,0,0,.35);padding:8px 14px;border-radius:999px;
+    opacity:0;transition:opacity .4s;pointer-events:none;white-space:nowrap;
+    animation:pulse 1.4s ease-in-out infinite;
+  }
+  #tapHint.show{opacity:1;}
+  @keyframes pulse{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.08)}}
+
+  #messages{
+    position:absolute;
+    left:4%;top:14%;
+    width:46%;
+    z-index:20;
+    text-align:left;
+    color:var(--ink);line-height:1.55;
+    font-size:clamp(11px,3vw,18px);
+    text-shadow:0 2px 14px rgba(0,0,0,.9),0 0 22px rgba(0,0,0,.7);
+    pointer-events:none;
+    opacity:0;transition:opacity .5s ease;
+  }
+  #messages.ready{opacity:1;}
+  #messages .say{display:block;opacity:0;margin:0 0 6px;min-height:1.1em;font-weight:600;}
+  #messages .say:last-child{margin-bottom:0;}
+  #messages .say.show{opacity:1;}
+  #messages .say.typing::after{
+    content:"|";color:var(--accent);margin-left:1px;
+    animation:blink .8s steps(1) infinite;
+  }
+  @keyframes blink{50%{opacity:0}}
+
+  /* rose shower */
+  #roses{
+    position:fixed;inset:0;z-index:30;pointer-events:none;overflow:hidden;
+  }
+  #roses .rose{
+    position:absolute;top:-8%;will-change:transform,opacity;
+    animation-name:rosefall;animation-timing-function:linear;animation-fill-mode:forwards;
+  }
+  @keyframes rosefall{
+    0%{transform:translate(0,-10vh) rotate(0deg);opacity:0;}
+    10%{opacity:1;}
+    100%{transform:translate(var(--sway,0),110vh) rotate(220deg);opacity:1;}
+  }
+
+  /* controls */
+  .fab{
+    position:fixed;z-index:40;bottom:calc(16px + env(safe-area-inset-bottom));
+    border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.07);
+    color:var(--ink);padding:11px 16px;border-radius:999px;cursor:pointer;font-size:14px;
+    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+    opacity:0;pointer-events:none;transition:opacity .4s;min-height:44px;
+  }
+  .fab.show{opacity:1;pointer-events:auto;}
+  .fab:active{transform:scale(.96);}
+  #replay{right:16px;}
+  #mute{left:16px;}
+
+  @media (prefers-reduced-motion:reduce){
+    #start,#cake{animation:none;transition:none;}
+    #tapHint{animation:none;}
+  }
+</style>
+</head>
+<body>
+
+  <div id="start">
+    <div id="cake">🎂</div>
+    <h1>Surprise from Dheeraj</h1>
+    <p>A little surprise from Dheeraj 🎈 — tap anywhere to begin, and watch a heart grow into a tree just for you, with music.</p>
+    <button id="startBtn" type="button">Start the surprise ✨</button>
+  </div>
+
+  <audio id="audio" preload="auto" playsinline>
+    <source src="assets/aud.mp3" type="audio/mpeg">
+  </audio>
+
+  <div id="wrap">
+    <div id="messages">
+      <span class="say">Hey you 💞</span>
+      <span class="say">Today is all about you 🎉</span>
+      <span class="say">Hope you are all doing well 🎈</span>
+      <span class="say">May God bless you 🍀</span>
+      <span class="say">And give you lots of happiness 💕</span>
+      <span class="say">Just saying... you're pretty awesome ❤️</span>
+      <span class="say">Sending good vibes and maybe a wink 😏</span>
+      <span class="say">May all your dreams come true this year 🌟</span>
+      <span class="say">Hope you have a great day today ❤️</span>
+    </div>
+    <div id="tapHint">👆 Tap the heart</div>
+    <canvas id="canvas" width="1100" height="680"></canvas>
+  </div>
+
+  <div id="roses" aria-hidden="true"></div>
+
+  <button id="mute" class="fab" type="button">🔊 Music on</button>
+  <button id="replay" class="fab" type="button">↻ Replay</button>
+
+<script>
+"use strict";
+(function(){
+  /* ============================ helpers ============================ */
+  function random(min,max){ return min + Math.random()*(max-min); }
+  function randInt(min,max){ return Math.floor(random(min,max+1)); }
+  var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function Point(x,y){ this.x=x||0; this.y=y||0; }
+  Point.prototype.clone=function(){ return new Point(this.x,this.y); };
+  Point.prototype.add=function(o){ return new Point(this.x+o.x,this.y+o.y); };
+  Point.prototype.sub=function(o){ return new Point(this.x-o.x,this.y-o.y); };
+  Point.prototype.div=function(n){ return new Point(this.x/n,this.y/n); };
+  Point.prototype.mul=function(n){ return new Point(this.x*n,this.y*n); };
+
+  function bezier(cp,t){
+    var p1=cp[0].mul((1-t)*(1-t));
+    var p2=cp[1].mul(2*t*(1-t));
+    var p3=cp[2].mul(t*t);
+    return p1.add(p2).add(p3);
+  }
+  function inheart(x,y,r){
+    var a=(x/r)*(x/r)+(y/r)*(y/r)-1;
+    return (a*a*a - (x/r)*(x/r)*(y/r)*(y/r)*(y/r)) < 0;
+  }
+
+  /* ============================ heart shape ============================ */
+  function Heart(){
+    var pts=[],t;
+    for(var i=10;i<30;i+=0.2){
+      t=i/Math.PI;
+      pts.push(new Point(
+        16*Math.pow(Math.sin(t),3),
+        13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t)
+      ));
+    }
+    this.points=pts; this.length=pts.length;
+  }
+  Heart.prototype.get=function(i,scale){ return this.points[i].mul(scale||1); };
+
+  /* ============================ seed ============================ */
+  function Seed(tree,point,scale){
+    this.tree=tree;
+    this.color="#ff9ab5";
+    this.heart={ point:point, scale:scale||1, figure:new Heart() };
+    this.circle={ point:point.clone(), scale:scale||1, radius:5 };
+  }
+  Seed.prototype={
+    draw:function(){ this.drawHeart(); this.drawText(); },
+    drawHeart:function(){
+      var ctx=this.tree.ctx,h=this.heart;
+      ctx.save();
+      ctx.fillStyle=this.color;
+      ctx.shadowColor="rgba(255,140,170,.6)"; ctx.shadowBlur=18;
+      ctx.translate(h.point.x,h.point.y);
+      ctx.beginPath(); ctx.moveTo(0,0);
+      for(var i=0;i<h.figure.length;i++){ var p=h.figure.get(i,h.scale); ctx.lineTo(p.x,-p.y); }
+      ctx.closePath(); ctx.fill(); ctx.restore();
+    },
+    drawText:function(){
+      var ctx=this.tree.ctx,h=this.heart;
+      ctx.save();
+      ctx.strokeStyle=this.color; ctx.fillStyle=this.color;
+      ctx.translate(h.point.x,h.point.y); ctx.scale(h.scale,h.scale);
+      ctx.lineWidth=0.8;
+      ctx.beginPath(); ctx.moveTo(6,6); ctx.lineTo(14,14); ctx.lineTo(90,14); ctx.stroke();
+      ctx.font="600 11px "+getComputedStyle(document.body).fontFamily;
+      ctx.textBaseline="alphabetic";
+      ctx.fillText("Tap me :)",18,4);
+      ctx.fillText("It's your day!",18,26);
+      ctx.restore();
+    },
+    drawCircle:function(){
+      var ctx=this.tree.ctx,c=this.circle;
+      ctx.save(); ctx.fillStyle=this.color;
+      ctx.translate(c.point.x,c.point.y); ctx.scale(c.scale,c.scale);
+      ctx.beginPath(); ctx.arc(0,0,c.radius,0,2*Math.PI); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    },
+    clear:function(){
+      var ctx=this.tree.ctx,c=this.circle,r=40,w=r*Math.max(this.heart.scale,1);
+      ctx.clearRect(c.point.x-2*w,c.point.y-2*w,4*w,4*w);
+    },
+    canScale:function(){ return this.heart.scale>0.2; },
+    scale:function(s){ this.clear(); this.drawCircle(); this.drawHeart(); this.heart.scale*=s; },
+    canMove:function(){ return this.circle.point.y<(this.tree.height+20); },
+    move:function(x,y){ this.clear(); this.drawCircle(); this.circle.point=this.circle.point.add(new Point(x,y)); },
+    hover:function(x,y){
+      var ctx=this.tree.ctx;
+      try{ return ctx.getImageData(x,y,1,1).data[3]>10; }catch(e){ return false; }
+    },
+    /* generous tap area for fingers */
+    near:function(x,y,pad){
+      var c=this.circle.point, s=this.heart.scale;
+      var reach=(pad||60)+40*s;
+      return Math.abs(x-c.x)<reach && Math.abs(y-c.y)<reach*1.2;
+    }
+  };
+
+  /* ============================ footer line ============================ */
+  function Footer(tree,width,height,speed){
+    this.tree=tree;
+    this.point=new Point(tree.seed.heart.point.x,tree.height-height/2);
+    this.width=width; this.height=height; this.speed=speed||2; this.length=0;
+  }
+  Footer.prototype.draw=function(){
+    var ctx=this.tree.ctx,len=this.length/2;
+    ctx.save();
+    ctx.strokeStyle="rgba(255,255,255,.55)";
+    ctx.lineWidth=this.height; ctx.lineCap="round"; ctx.lineJoin="round";
+    ctx.translate(this.point.x,this.point.y);
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(len,0); ctx.lineTo(-len,0); ctx.stroke();
+    ctx.restore();
+    if(this.length<this.width){ this.length+=this.speed; }
+  };
+
+  /* ============================ branch ============================ */
+  function Branch(tree,p1,p2,p3,radius,length,children){
+    this.tree=tree; this.p1=p1; this.p2=p2; this.p3=p3;
+    this.radius=radius; this.length=length||100; this.len=0;
+    this.t=1/(this.length-1); this.children=children||[];
+  }
+  Branch.prototype={
+    grow:function(){
+      if(this.len<=this.length){
+        this.draw(bezier([this.p1,this.p2,this.p3],this.len*this.t));
+        this.len+=1; this.radius*=0.97;
+      }else{
+        this.tree.removeBranch(this);
+        this.tree.addBranches(this.children);
+      }
+    },
+    draw:function(p){
+      var ctx=this.tree.ctx;
+      ctx.save(); ctx.beginPath();
+      ctx.fillStyle="#ff9ab5"; ctx.shadowColor="rgba(255,120,160,.4)"; ctx.shadowBlur=3;
+      ctx.arc(p.x,p.y,this.radius,0,2*Math.PI); ctx.closePath(); ctx.fill(); ctx.restore();
+    }
+  };
+
+  /* ============================ bloom (heart petals) ============================ */
+  function Bloom(tree,point,figure,opt){
+    opt=opt||{};
+    this.tree=tree; this.point=point; this.figure=figure;
+    this.color=opt.color||("hsl("+randInt(320,355)+","+randInt(70,100)+"%,"+randInt(60,80)+"%)");
+    this.alpha=opt.alpha||random(0.4,1);
+    this.angle=opt.angle||random(0,Math.PI*2);
+    this.scale=opt.scale||0.1;
+    this.place=opt.place; this.speed=opt.speed;
+  }
+  Bloom.prototype={
+    flower:function(){ this.draw(); this.scale+=0.1; if(this.scale>1) this.tree.removeBloom(this); },
+    draw:function(){
+      var ctx=this.tree.ctx,f=this.figure;
+      ctx.save();
+      ctx.fillStyle=this.color; ctx.globalAlpha=this.alpha;
+      ctx.translate(this.point.x,this.point.y); ctx.scale(this.scale,this.scale); ctx.rotate(this.angle);
+      ctx.beginPath(); ctx.moveTo(0,0);
+      for(var i=0;i<f.length;i++){ var p=f.get(i); ctx.lineTo(p.x,-p.y); }
+      ctx.closePath(); ctx.fill(); ctx.restore();
+    },
+    jump:function(){
+      var h=this.tree.height;
+      if(this.point.x<-20||this.point.y>h+20){ this.tree.removeBloom(this); }
+      else{
+        this.draw();
+        this.point=this.place.sub(this.point).div(this.speed).add(this.point);
+        this.angle+=0.05; this.speed-=1;
+      }
+    }
+  };
+
+  /* ============================ tree ============================ */
+  function Tree(canvas,width,height,opt){
+    this.canvas=canvas; this.ctx=canvas.getContext("2d");
+    this.width=width; this.height=height; this.opt=opt||{}; this.record={};
+    this.initSeed(); this.initFooter(); this.initBranch(); this.initBloom();
+  }
+  Tree.prototype={
+    initSeed:function(){
+      var s=this.opt.seed||{};
+      this.seed=new Seed(this,new Point(s.x||this.width/2,s.y||this.height/2),s.scale||1);
+    },
+    initFooter:function(){
+      var f=this.opt.footer||{};
+      this.footer=new Footer(this,f.width||this.width,f.height||5,f.speed||2);
+    },
+    initBranch:function(){ this.branches=[]; this.addBranches(this.opt.branch||[]); },
+    initBloom:function(){
+      var b=this.opt.bloom||{},cache=[],num=b.num||500,
+          w=b.width||this.width,h=b.height||this.height,fig=this.seed.heart.figure,r=240;
+      for(var i=0;i<num;i++){ cache.push(this.createBloom(w,h,r,fig)); }
+      this.blooms=[]; this.bloomsCache=cache;
+    },
+    toDataURL:function(t){ return this.canvas.toDataURL(t); },
+    addBranch:function(b){ this.branches.push(b); },
+    addBranches:function(arr){
+      for(var i=0;i<arr.length;i++){
+        var b=arr[i];
+        this.addBranch(new Branch(this,new Point(b[0],b[1]),new Point(b[2],b[3]),new Point(b[4],b[5]),b[6],b[7],b[8]));
+      }
+    },
+    removeBranch:function(b){ var i=this.branches.indexOf(b); if(i>-1)this.branches.splice(i,1); },
+    canGrow:function(){ return !!this.branches.length; },
+    grow:function(){ for(var i=this.branches.length-1;i>=0;i--){ if(this.branches[i])this.branches[i].grow(); } },
+    addBloom:function(b){ this.blooms.push(b); },
+    removeBloom:function(b){ var i=this.blooms.indexOf(b); if(i>-1)this.blooms.splice(i,1); },
+    createBloom:function(w,h,r,fig,opt){
+      var x,y,guard=0;
+      while(guard++<10000){
+        x=random(20,w-20); y=random(20,h-20);
+        if(inheart(x-w/2,h-(h-40)/2-y,r)) return new Bloom(this,new Point(x,y),fig,opt);
+      }
+      return new Bloom(this,new Point(w/2,h/2),fig,opt);
+    },
+    canFlower:function(){ return !!this.bloomsCache.length || !!this.blooms.length; },
+    flower:function(num){
+      var picked=this.bloomsCache.splice(0,num);
+      for(var i=0;i<picked.length;i++) this.addBloom(picked[i]);
+      for(var j=this.blooms.length-1;j>=0;j--) this.blooms[j].flower();
+    },
+    snapshot:function(k,x,y,w,h){
+      this.record[k]={ image:this.ctx.getImageData(x,y,w,h), point:new Point(x,y), width:w, height:h };
+    },
+    move:function(k,x,y){
+      var rec=this.record[k||"move"],ctx=this.ctx,speed=rec.speed||10;
+      var i=rec.point.x+speed<x?rec.point.x+speed:x;
+      var j=rec.point.y+speed<y?rec.point.y+speed:y;
+      ctx.clearRect(rec.point.x,rec.point.y,rec.width,rec.height);
+      ctx.putImageData(rec.image,i,j);
+      rec.point=new Point(i,j); rec.speed=Math.max(2,speed*0.95);
+      return i<x||j<y;
+    },
+    jump:function(){
+      for(var i=this.blooms.length-1;i>=0;i--) this.blooms[i].jump();
+      if(this.blooms.length<3){
+        var b=this.opt.bloom||{},w=b.width||this.width,h=b.height||this.height,fig=this.seed.heart.figure;
+        for(var k=0;k<randInt(1,2);k++){
+          this.blooms.push(this.createBloom(w/2+w,h,240,fig,{
+            alpha:1,scale:1,place:new Point(random(-100,600),720),speed:randInt(200,300)
+          }));
+        }
+      }
+    }
+  };
+
+  /* ============================ tiny async runner (replaces Jscex) ============================ */
+  var cancelled=false;
+  function animate(step){
+    return new Promise(function(resolve){
+      (function loop(){
+        if(cancelled){ resolve(); return; }
+        var again=step();
+        if(again===false){ resolve(); return; }
+        requestAnimationFrame(loop);
+      })();
+    });
+  }
+  function wait(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
+
+  /* ============================ orchestration ============================ */
+  var canvas=document.getElementById("canvas");
+  var opts={
+    seed:{ x:canvas.width/2-20, scale:2 },
+    branch:[
+      [535,680,570,250,500,200,30,100,[
+        [540,500,455,417,340,400,13,100,[[450,435,434,430,394,395,2,40]]],
+        [550,445,600,356,680,345,12,100,[[578,400,648,409,661,426,3,80]]],
+        [539,281,537,248,534,217,3,40],
+        [546,397,413,247,328,244,9,80,[[427,286,383,253,371,205,2,40],[498,345,435,315,395,330,4,60]]],
+        [546,357,608,252,678,221,6,100,[[590,293,646,277,648,271,2,80]]]
+      ]]
+    ],
+    bloom:{ num:700, width:1080, height:650 },
+    footer:{ width:1200, height:5, speed:10 }
+  };
+
+  var tree, seed, foot, hold=true, started=false, hintTimer=null;
+  var boundHandlers=null;
+
+  function bindClick(){
+    function toLocal(e){
+      var rect=canvas.getBoundingClientRect();
+      var sx=canvas.width/rect.width, sy=canvas.height/rect.height;
+      var t=e.touches&&e.touches[0]?e.touches[0]:e;
+      return { x:(t.clientX-rect.left)*sx, y:(t.clientY-rect.top)*sy };
+    }
+    function onClick(e){
+      if(e.cancelable) e.preventDefault();
+      var p=toLocal(e);
+      if(seed.hover(p.x,p.y)||seed.near(p.x,p.y)){
+        hold=false;
+        document.getElementById("tapHint").classList.remove("show");
+        unbindClick();
+        canvas.classList.remove("hand");
+      }
+    }
+    function onMove(e){
+      var p=toLocal(e);
+      canvas.classList.toggle("hand",seed.hover(p.x,p.y)||seed.near(p.x,p.y));
+    }
+    boundHandlers={onClick:onClick,onMove:onMove};
+    canvas.addEventListener("click",onClick);
+    canvas.addEventListener("touchstart",onClick,{passive:false});
+    canvas.addEventListener("mousemove",onMove);
+  }
+  function unbindClick(){
+    if(!boundHandlers) return;
+    canvas.removeEventListener("click",boundHandlers.onClick);
+    canvas.removeEventListener("touchstart",boundHandlers.onClick);
+    canvas.removeEventListener("mousemove",boundHandlers.onMove);
+    boundHandlers=null;
+  }
+
+  /* ---- Emoji shower: rain a specific emoji for a short burst ---- */
+  var showerTimers=[];
+  // Grab the trailing emoji(s) at the end of a line, e.g. "Hey you 💞" -> "💞"
+  function lastEmoji(str){
+    var m=str.match(/([\p{Extended_Pictographic}\uFE0F\u200D]+)\s*$/u);
+    return m ? m[1].trim() : null;
+  }
+  function emojiShower(emoji, durationMs){
+    if(!emoji) return;
+    var layer=document.getElementById("roses");
+    var end=Date.now()+(durationMs||1600);
+    function drop(){
+      if(cancelled) return;
+      var r=document.createElement("span");
+      r.className="rose";
+      r.textContent=emoji;
+      r.style.left=random(0,100)+"vw";
+      r.style.fontSize=random(18,34)+"px";
+      var dur=random(3.5,6);
+      r.style.animationDuration=dur+"s";
+      r.style.setProperty("--sway",(random(-60,60))+"px");
+      layer.appendChild(r);
+      setTimeout(function(){ if(r.parentNode) r.parentNode.removeChild(r); }, dur*1000+200);
+    }
+    for(var i=0;i<6;i++){ setTimeout(drop, i*120); }   // initial burst
+    var t=setInterval(function(){
+      if(cancelled || Date.now()>end){ clearInterval(t); return; }
+      drop();
+    }, 200);
+    showerTimers.push(t);
+  }
+  function stopShowers(){
+    showerTimers.forEach(function(t){ clearInterval(t); });
+    showerTimers=[];
+    var layer=document.getElementById("roses");
+    if(layer) layer.innerHTML="";
+  }
+
+  function revealMessages(){
+    var says=Array.prototype.slice.call(document.querySelectorAll("#messages .say"));
+    document.getElementById("messages").classList.add("ready");
+    // store each line's text, then type it out letter by letter
+    says.forEach(function(el){ el.dataset.full=el.textContent; el.textContent=""; el.classList.add("show"); });
+    var totalDelay=0;
+    var speed=55;      // ms per character
+    var gap=650;       // pause between lines (a bit longer so the shower shows)
+    says.forEach(function(el){
+      var full=el.dataset.full;
+      var emoji=lastEmoji(full);
+      (function(startAt){
+        setTimeout(function(){
+          if(cancelled) return;
+          var i=0;
+          el.classList.add("typing");
+          var t=setInterval(function(){
+            if(cancelled){ clearInterval(t); return; }
+            el.textContent=full.slice(0,i+1);
+            i++;
+            if(i>=full.length){
+              clearInterval(t);
+              el.classList.remove("typing");
+              // line finished -> rain this line's ending emoji
+              if(!reduceMotion) emojiShower(emoji, 1600);
+            }
+          }, speed);
+        }, startAt);
+      })(totalDelay);
+      totalDelay += full.length*speed + gap;
+    });
+    return totalDelay + 600;
+  }
+
+  async function run(){
+    cancelled=false;
+    tree=new Tree(canvas,canvas.width,canvas.height,opts);
+    seed=tree.seed; foot=tree.footer; hold=true;
+    canvas.classList.add("hand");
+    bindClick();
+
+    // 1) seed appears
+    seed.draw();
+
+    // show a tap hint after a moment (helps on phones)
+    hintTimer=setTimeout(function(){
+      if(hold) document.getElementById("tapHint").classList.add("show");
+    },1400);
+
+    // wait for the user to tap the heart
+    await animate(function(){ return hold; });
+    clearTimeout(hintTimer);
+    if(cancelled) return;
+
+    // wipe the seed + its "Tap me / It's your day!" text so nothing lingers later
+    tree.ctx.clearRect(0,0,canvas.width,canvas.height);
+    seed.drawCircle();
+
+    // 2) seed shrinks + drops
+    await animate(function(){ if(seed.canScale()){ seed.scale(0.95); return true; } return false; });
+    await animate(function(){ if(seed.canMove()){ seed.move(0,2); foot.draw(); return true; } return false; });
+    if(cancelled) return;
+
+    // 3) grow branches
+    await animate(function(){ tree.grow(); return tree.canGrow(); });
+    if(cancelled) return;
+
+    // 4) bloom hearts
+    await animate(function(){ tree.flower(2); return tree.canFlower(); });
+    if(cancelled) return;
+
+    // 5) slide the whole tree right
+    tree.snapshot("p1",240,0,610,680);
+    await animate(function(){ var more=tree.move("p1",500,0); foot.draw(); return more; });
+    foot.draw();
+    if(cancelled) return;
+
+    // 6) messages typing — each line rains its own ending emoji as it finishes
+    var msgTime=revealMessages();
+    await wait(msgTime);                           // let all messages finish typing
+    if(cancelled) return;
+
+    await wait(2000);                              // let the last emoji shower fall out
+    stopShowers();
+
+    // 7) everything is done -> stop the music with a gentle fade, then reveal controls
+    fadeOutAudio(2500);
+    document.getElementById("replay").classList.add("show");
+    document.getElementById("mute").classList.remove("show");
+  }
+
+  /* ============================ audio ============================ */
+  var audio=document.getElementById("audio");
+  var muted=false;
+
+  function fadeOutAudio(ms){
+    if(audio.paused) return;
+    var steps=30, i=0, start=audio.volume;
+    var iv=setInterval(function(){
+      i++;
+      audio.volume=Math.max(0, start*(1-i/steps));
+      if(i>=steps){ clearInterval(iv); audio.pause(); audio.currentTime=0; audio.volume=1; }
+    }, ms/steps);
+  }
+
+  // If the song ends on its own before the animation, that's fine — no loop now.
+  audio.addEventListener("ended",function(){ /* song finished naturally */ });
+
+  var muteBtn=document.getElementById("mute");
+  muteBtn.addEventListener("click",function(){
+    muted=!muted;
+    audio.muted=muted;
+    muteBtn.textContent=muted?"🔇 Music off":"🔊 Music on";
+  });
+
+  /* ============================ start / replay ============================ */
+  var startEl=document.getElementById("start");
+  var startBtn=document.getElementById("startBtn");
+  var replayBtn=document.getElementById("replay");
+
+  function begin(){
+    if(started) return; started=true;
+    startEl.classList.add("hide");
+    audio.volume=1; audio.currentTime=0;
+    audio.play().catch(function(){ /* silent fallback */ });
+    document.getElementById("mute").classList.add("show");
+    run();
+  }
+  startBtn.addEventListener("click",begin);
+  startBtn.addEventListener("touchstart",function(e){ e.preventDefault(); begin(); },{passive:false});
+
+  // First tap anywhere on the page starts the music + animation.
+  function firstTap(){
+    begin();
+    document.removeEventListener("pointerdown",firstTap);
+    document.removeEventListener("touchstart",firstTap);
+    document.removeEventListener("click",firstTap);
+  }
+  document.addEventListener("pointerdown",firstTap);
+  document.addEventListener("touchstart",firstTap,{passive:true});
+  document.addEventListener("click",firstTap);
+
+  replayBtn.addEventListener("click",function(){
+    cancelled=true;               // stop any running animation loop
+    clearTimeout(hintTimer);
+    stopShowers();
+    unbindClick();
+    setTimeout(function(){
+      canvas.getContext("2d").clearRect(0,0,canvas.width,canvas.height);
+      document.getElementById("roses").innerHTML="";
+      document.getElementById("messages").classList.remove("ready");
+      document.querySelectorAll("#messages .say").forEach(function(el){
+        if(el.dataset.full!==undefined){ el.textContent=el.dataset.full; }  // restore original text
+        el.classList.remove("show","typing");
+      });
+      document.getElementById("tapHint").classList.remove("show");
+      replayBtn.classList.remove("show");
+      document.getElementById("mute").classList.add("show");
+      audio.volume=1; audio.muted=muted; audio.currentTime=0;
+      audio.play().catch(function(){});
+      run();
+    },60);
+  });
+})();
+</script>
+</body>
+</html>
